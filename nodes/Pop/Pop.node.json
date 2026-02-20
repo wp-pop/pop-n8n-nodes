@@ -1,0 +1,33 @@
+{
+	"node": "n8n-nodes-pop",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Finance & Accounting"
+	],
+	"subcategories": {
+		"Finance & Accounting": [
+			"Invoicing"
+		]
+	},
+	"alias": [
+		"POP",
+		"e-invoice",
+		"FatturaPA",
+		"SdI",
+		"Peppol",
+		"electronic invoicing"
+	],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://documenter.getpostman.com/view/41622997/2sAYkLmGT8"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://documenter.getpostman.com/view/41622997/2sAYkLmGT8"
+			}
+		]
+	}
+}

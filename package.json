@@ -1,0 +1,50 @@
+{
+  "name": "@babinimazzari/n8n-nodes-pop",
+  "version": "0.1.0",
+  "description": "n8n community node for POP Cloud API (v2) — Italian SdI and Peppol e-invoicing",
+  "homepage": "https://github.com/babinimazzari/n8n-nodes-pop#readme",
+  "license": "MIT",
+  "keywords": [
+    "n8n-community-node-package",
+    "peppol",
+    "e-invoicing",
+    "fatturapa",
+    "sdi"
+  ],
+  "author": {
+    "name": "Babini Mazzari S.r.l.",
+    "email": "lucas@babinimazzari.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/babinimazzari/n8n-nodes-pop.git"
+  },
+  "scripts": {
+    "build": "node node_modules/@n8n/node-cli/bin/n8n-node.mjs build",
+    "build:watch": "tsc --watch",
+    "dev": "node node_modules/@n8n/node-cli/bin/n8n-node.mjs dev",
+    "lint": "node node_modules/@n8n/node-cli/bin/n8n-node.mjs lint",
+    "lint:fix": "node node_modules/@n8n/node-cli/bin/n8n-node.mjs lint --fix",
+    "release": "node node_modules/@n8n/node-cli/bin/n8n-node.mjs release",
+    "prepublishOnly": "node node_modules/@n8n/node-cli/bin/n8n-node.mjs prerelease"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
+    "nodes": [
+      "dist/nodes/Pop/Pop.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@n8n/node-cli": "0.17.0",
+    "eslint": "9.32.0",
+    "prettier": "3.6.2",
+    "typescript": "5.9.2"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
