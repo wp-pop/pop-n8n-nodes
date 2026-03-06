@@ -199,13 +199,19 @@ export function buildInvoicePayload(
 		order_items: items.map((item: AnyRecord, index: number) => {
 			// Validate discount fields at runtime since n8n cannot enforce
 			// cross-field required constraints within fixedCollection items
-			if (variant === 'sdi' && item.discountType === 'yes') {
-				if (!item.discountPercent) {
-					throw new Error(`Order item ${index + 1}: Discount Percent is required when Discount is Yes`);
-				}
-				if (!item.discountAmount) {
-					throw new Error(`Order item ${index + 1}: Discount Amount is required when Discount is Yes`);
-				}
+			if (item.discountType === 'yes' && !item.discountPercent) {
+				throw new Error(`Order item ${index + 1}: Discount Percent is required when Discount is Yes`);
+			}
+			// Calculate total_price and discount_amount from unit price x quantity
+			const unitPrice = parseFloat(item.unitPrice) || 0;
+			const quantity = parseFloat(item.quantity) || 1;
+			const baseTotal = Math.round(unitPrice * quantity * 100) / 100;
+			let discountAmount = 0;
+			let totalPrice = baseTotal;
+			if (item.discountType === 'yes') {
+				const discountPercent = parseFloat(item.discountPercent) || 0;
+				discountAmount = Math.round(baseTotal * discountPercent) / 100;
+				totalPrice = Math.round((baseTotal - discountAmount) * 100) / 100;
 			}
 			return ({
 				item_code: {
@@ -219,9 +225,9 @@ export function buildInvoicePayload(
 				unit: item.unit || 'N.',
 				discount_type: item.discountType === 'yes' ? 'SC' : '',
 				discount_percent: item.discountPercent || '',
-				discount_amount: item.discountAmount || '',
+				discount_amount: discountAmount > 0 ? String(discountAmount) : '',
 				unit_price: item.unitPrice || '',
-				total_price: item.totalPrice || '',
+				total_price: String(totalPrice),
 				rate: item.rate || '0.00',
 				total_tax: item.totalTax ?? 0,
 			}); }),

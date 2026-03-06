@@ -12,6 +12,23 @@ This node lets you create, send, and track electronic invoices directly from n8n
 
 ---
 
+## Table of Contents
+
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Operations](#operations)
+- [Input Modes](#input-modes)
+- [Form Fields Reference](#form-fields-reference)
+- [Example Workflow](#example-workflow)
+- [Example Payloads](#example-payloads)
+- [Project Structure](#project-structure)
+- [Local Development](#local-development)
+- [Publishing](#publishing)
+- [Resources](#resources)
+- [License](#license)
+
+---
+
 ## Installation
 
 Follow the [n8n community nodes installation guide](https://docs.n8n.io/integrations/community-nodes/installation/).
@@ -25,19 +42,16 @@ Follow the [n8n community nodes installation guide](https://docs.n8n.io/integrat
 
 ## Configuration
 
-This node does **not** require any credentials to be set up. Instead, each operation exposes a **Base URL** input field at the top of its settings.
+This node does **not** require any credentials. Instead, each operation exposes an **Environment** selector at the top of its settings.
 
-| Field        | Description                                                                           |
-| ------------ | ------------------------------------------------------------------------------------- |
-| **Base URL** | Full base URL of the POP API (e.g. `https://your-instance.popapi.io/wp-json/api/v2/`) |
+| Field           | Options                           | Description                              |
+|-----------------|-----------------------------------|------------------------------------------|
+| **Environment** | `Staging` (default), `Production` | Selects the POP API environment to use   |
 
-The default value (`https://staging7.popapi.io/wp-json/api/v2/`) targets the POP staging environment. Replace it with your production URL when you are ready.
-
-Because the Base URL is a regular node input, you can:
-
-- Use a different URL per operation within the same workflow
-- Set it dynamically using an expression (e.g. `={{ $env.POP_BASE_URL }}`)
-- Map it from a previous node's output
+| Environment   | Base URL                                        |
+|---------------|-------------------------------------------------|
+| **Staging**   | `https://staging7.popapi.io/wp-json/api/v2/`    |
+| **Production**| `https://popapi.io/wp-json/api/v2/`             |
 
 > The **license key** is sent inside each request payload (via the Form Fields input mode), not in a shared credential. This lets you use different license keys per operation or workflow.
 
@@ -62,7 +76,7 @@ Generates a **Peppol** invoice in **UBL** format and optionally submits it to th
 - **Endpoint:** `POST /create-ubl`
 - **Invio Fattura:** Toggle to `Yes` to include the Peppol integration object
 - **Input modes:** Passthrough, Form Fields, JSON, Raw
-- Customer type is limited to Company or Freelance (Peppol does not support Private individuals)
+- Customer type is limited to **Company** or **Freelance** (Peppol does not support Private individuals)
 
 #### Get Invoice Status
 
@@ -87,12 +101,157 @@ Retrieves a Peppol document by integration UUID.
 
 All four operations support the same four input modes:
 
-| Mode                  | Description                                                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------ |
+| Mode                  | Description                                                                                             |
+|-----------------------|---------------------------------------------------------------------------------------------------------|
 | **Use Incoming JSON** | Forwards the input item's JSON data directly to the API. Default mode, ideal for automated pipelines.  |
-| **Form Fields**       | Structured form with all relevant fields. Best for manual entry or mapping from other nodes.           |
-| **JSON**              | Paste or build the full request JSON payload manually.                                                 |
-| **Raw (XML/Other)**   | Send a raw string body (e.g. XML). Sets `Content-Type: application/xml` unless overridden via headers. |
+| **Form Fields**       | Structured form with all relevant fields. Best for manual entry or mapping from other nodes.            |
+| **JSON**              | Paste or build the full request JSON payload manually.                                                  |
+| **Raw (XML/Other)**   | Send a raw string body (e.g. XML). Sets `Content-Type: application/xml` unless overridden via headers.  |
+
+---
+
+## Form Fields Reference
+
+The **Form Fields** input mode for `Create SdI Invoice (XML)` and `Create Peppol Invoice (UBL)` exposes the following sections. Fields marked with an asterisk (`*`) are required.
+
+### A. Top-level Fields
+
+| Field                     | SDI | Peppol | Description                                              |
+|---------------------------|:---:|:------:|----------------------------------------------------------|
+| License Key `*`           | ✓   | ✓      | POP license key sent in the request payload              |
+| Invoice / Order ID `*`    | ✓   | ✓      | Numeric ID of the invoice or order                       |
+| Filename `*`              | ✓   | ✓      | FatturaPA / Peppol filename (e.g. `IT99900088876_00009`) |
+| Customer Type `*`         | ✓   | ✓      | `Private` / `Company` / `Freelance` (Peppol: no Private) |
+| SDI Type (Codice Destinatario) `*` | ✓ | —   | SdI destination code (7 chars). Defaults to `0000000` for private customers without a code; forced to `XXXXXXX` for foreign clients |
+| Invoice Number `*`        | ✓   | ✓      | Full invoice number (e.g. `WEB9/2025`)                   |
+| Invoice Date `*`          | ✓   | ✓      | Invoice date in `YYYY-MM-DD` format                      |
+| Total Document Amount `*` | ✓   | ✓      | Total amount including taxes                             |
+
+### B. Transmitter Data
+
+| Field              | SDI | Peppol | Description                                  |
+|--------------------|:---:|:------:|----------------------------------------------|
+| Country            | ✓   | ✓      | ISO country code of the transmitter           |
+| Email              | ✓   | ✓      | Transmitter contact email                     |
+| ID Code            | ✓   | ✓      | Transmitter identification code               |
+| Phone              | ✓   | ✓      | Transmitter contact phone                     |
+| Progressive        | ✓   | —      | Progressive identifier for the transmission   |
+| Recipient PEC      | ✓   | —      | PEC (certified email) of the recipient        |
+| SDI Code           | ✓   | —      | Codice destinatario SdI (7 chars)             |
+| Transmitter Format | ✓   | ✓      | `FPR12` (Private) or `FPA12` (Public Admin)   |
+
+### C. Sender (Lender)
+
+| Field         | SDI | Peppol | Description                                       |
+|---------------|:---:|:------:|---------------------------------------------------|
+| Address       | ✓   | ✓      | Street address                                    |
+| City          | ✓   | ✓      | City name                                         |
+| Company Name  | ✓   | ✓      | Company or business name                          |
+| Country       | ✓   | ✓      | ISO country code of the sender address            |
+| Email         | ✓   | ✓      | Contact email                                     |
+| Phone         | ✓   | ✓      | Contact phone                                     |
+| Province      | ✓   | ✓      | Province abbreviation (e.g. `CT`, `MI`)           |
+| Tax Regime    | ✓   | —      | Italian tax regime code (e.g. `RF01` — Ordinary)  |
+| VAT Country   | ✓   | ✓      | ISO country code for VAT identification           |
+| VAT ID Code   | ✓   | ✓      | Full VAT identification code                      |
+| ZIP Code      | ✓   | ✓      | Postal / ZIP code                                 |
+
+### D. Recipient (Client)
+
+| Field                          | SDI | Peppol | Description                                      |
+|--------------------------------|:---:|:------:|--------------------------------------------------|
+| Address                        | ✓   | ✓      | Street address                                   |
+| City                           | ✓   | ✓      | City name                                        |
+| Company Name                   | ✓   | ✓      | Company name (leave empty for individuals)        |
+| Country                        | ✓   | ✓      | ISO country code of the recipient address         |
+| Email                          | ✓   | ✓      | Email address                                    |
+| First Name                     | ✓   | ✓      | First name (individuals)                         |
+| Last Name                      | ✓   | ✓      | Last name (individuals)                          |
+| Province                       | ✓   | ✓      | Province abbreviation                            |
+| Tax ID Code (Codice Fiscale)   | ✓   | —      | Italian fiscal code of the recipient             |
+| VAT Country                    | ✓   | ✓      | ISO country code for VAT identification          |
+| VAT ID Code                    | ✓   | ✓      | VAT identification code                          |
+| ZIP Code                       | ✓   | ✓      | Postal / ZIP code                                |
+
+### E. Invoice Details
+
+| Field           | Description                                         |
+|-----------------|-----------------------------------------------------|
+| Document Type   | `TD01` (Invoice) or `TD04` (Credit Note)            |
+| Currency        | ISO 4217 currency code (default: `EUR`)             |
+| Invoice Prefix  | Prefix portion of the invoice number (e.g. `WEB`)  |
+| Invoice Suffix  | Suffix portion of the invoice number (e.g. `2025`) |
+
+### F. Order Items
+
+Each line item supports multiple values. Fields apply to both SDI and Peppol unless noted.
+
+| Field            | Description                                                                 |
+|------------------|-----------------------------------------------------------------------------|
+| Description `*`  | Item description text                                                       |
+| Discount         | `No` (default) or `Yes`. When `Yes`, sets `discount_type = SC` in the payload |
+| Discount Percent | Required when Discount is `Yes`. Percentage to apply (e.g. `10.00`)        |
+| Gift Product     | `No` or `Yes` — whether the item is a gift / free product                  |
+| Item Code Type   | Type of item code (e.g. `INTERNO`, `EAN`)                                  |
+| Item Code Value  | Value of the item code                                                      |
+| Item Type        | `Product`, `Shipping`, or `Fee`                                             |
+| Quantity         | Quantity (e.g. `1.00`)                                                      |
+| Total Tax        | Tax amount for this line item                                               |
+| Unit             | Unit of measure (e.g. `N.`, `KG`, `LT`)                                    |
+| Unit Price       | Price per unit (e.g. `4.09`)                                                |
+| VAT Rate         | VAT rate percentage (e.g. `22.00`, `10.00`, `0.00`)                        |
+
+> **Discount behaviour:** When **Discount** is set to `Yes`, **Discount Percent** is required. The `discount_amount` and `total_price` are **automatically calculated** by the node — they are not editable inputs:
+> - `total_price = unit_price × quantity`
+> - `discount_amount = total_price × discount_percent / 100`
+> - `total_price` (sent to API) `= total_price − discount_amount`
+
+### G. Payment Data
+
+**Payment Method** — select from the dropdown (code is sent in the payload):
+
+| Label                  | Payload value |
+|------------------------|---------------|
+| Bank Transfer          | `MP05`        |
+| Cash                   | `MP01`        |
+| Check                  | `MP02`        |
+| Credit Card            | `MP08`        |
+| Direct Debit           | `MP16`        |
+| PagoPA                 | `MP23`        |
+| RIBA                   | `MP12`        |
+| SEPA Core Direct Debit | `MP21`        |
+| SEPA Direct Debit      | `MP19`        |
+| Special Account RIBA   | `MP15`        |
+| Withholding on Payments| `MP22`        |
+
+**Payment Data** (fixedCollection):
+
+| Field          | Description                                                      |
+|----------------|------------------------------------------------------------------|
+| Payment Amount | Amount to be paid (typically equals the total document amount)   |
+| Payment Terms  | `TP01` (Instalment), `TP02` (Full — default), `TP03` (Advance)  |
+
+**Bank Details** — shown only when Payment Method is `Bank Transfer`:
+
+| Field                 | Description                              |
+|-----------------------|------------------------------------------|
+| Beneficiary `*`       | Name of the payment beneficiary          |
+| Financial Institution `*` | Name of the bank or institution     |
+| IBAN `*`              | IBAN for bank transfer payments          |
+
+### H. Additional Options
+
+Optional advanced fields available in both SDI and Peppol form modes:
+
+| Field                        | Description                                                        |
+|------------------------------|--------------------------------------------------------------------|
+| Connected Invoice Data (JSON)| Connected invoice references as a JSON array                       |
+| Document Type (String)       | Document type string (e.g. `invoice`, `credit_note`)              |
+| Purchase Order Date          | Date of the related purchase order (`YYYY-MM-DD`)                 |
+| Purchase Order ID            | Reference to the related purchase order                            |
+| Tax Exemption Reason         | Normative reference text for VAT exempt operations                |
+| VAT Exemption Code           | Nature code for VAT exempt operations (e.g. `N1`, `N2`, `N3`, `N4`) |
+| VIES                         | Whether the transaction is intra-EU and VIES validated (`true`/`false`) |
 
 ---
 
@@ -102,10 +261,10 @@ All four operations support the same four input modes:
 [Webhook] → [POP: Create SdI Invoice] → [POP: Get Invoice Status] → [Slack]
 ```
 
-1. A Webhook node receives order data from your e-commerce platform
-2. The POP node creates an SdI invoice using **Use Incoming JSON** mode — the webhook payload is forwarded as-is
-3. A second POP node checks the invoice status using the UUID from the previous response
-4. A Slack node notifies the team of the result
+1. A **Webhook** node receives order data from your e-commerce platform
+2. The **POP** node creates an SdI invoice using **Use Incoming JSON** mode — the webhook payload is forwarded as-is
+3. A second **POP** node checks the invoice status using the UUID from the previous response
+4. A **Slack** node notifies the team of the result
 
 ---
 
@@ -115,157 +274,86 @@ All four operations support the same four input modes:
 
 ```json
 {
-	"license_key": "your_license_key",
-	"data": {
-		"id": 2575,
-		"filename": "IT99900088876_00009",
-		"type": "invoice",
-		"version": "FPR12",
-		"sdi_type": "",
-		"customer_type": "private",
-		"nature": "",
-		"ref_normative": null,
-		"vies": false,
-		"vat_kind": null,
-		"transmitter_data": {
-			"transmitter_id": {
-				"country_id": "IT",
-				"id_code": "IT99900088876"
-			},
-			"progressive": "5b27a73cab",
-			"transmitter_format": "FPR12",
-			"sdi_code": "0000000",
-			"transmitter_contact": {
-				"phone": "",
-				"email": ""
-			},
-			"recipient_pec": ""
-		},
-		"transfer_lender": {
-			"personal_data": {
-				"tax_id_vat": {
-					"country_id": "IT",
-					"id_code": "IT99900088876",
-					"tax_regime": "RF01"
-				},
-				"company_name": "TEST123"
-			},
-			"place": {
-				"address": "Via Roma, 123",
-				"zip_code": "95100",
-				"city": "Catania",
-				"province_id": "CT",
-				"country_id": "IT"
-			},
-			"rea_registration": {
-				"office": "",
-				"number": "",
-				"liquidation_status": ""
-			},
-			"contact": {
-				"phone": "",
-				"email": ""
-			}
-		},
-		"transferee_client": {
-			"personal_data": {
-				"tax_id_vat": {
-					"country_id": "IT",
-					"id_code": ""
-				},
-				"tax_id_code": "PCCLFA75L04A494S",
-				"company_name": "",
-				"first_name": "Alfio",
-				"last_name": "Piccione"
-			},
-			"place": {
-				"address": "Via Roma 123",
-				"zip_code": "95100",
-				"city": "Catania",
-				"province_id": "CT",
-				"country_id": "IT"
-			}
-		},
-		"invoice_body": {
-			"general_data": {
-				"doc_type": "TD01",
-				"currency": "EUR",
-				"date": "2025-01-31",
-				"invoice_number": "WEB9/2025",
-				"invoice_prefix": "WEB",
-				"invoice_suffix": "2025"
-			},
-			"provident_fund": [],
-			"total_document_amount": "16.38"
-		},
-		"purchase_order_data": {
-			"id": "#2575",
-			"date": "2025-01-31"
-		},
-		"connected_invoice_data": [],
-		"order_items": [
-			{
-				"item_code": { "type": "INTERNO", "value": "2563" },
-				"item_type": "product",
-				"gift_product": "no",
-				"description": "Prod 2",
-				"quantity": "1.00",
-				"unit": "N.",
-				"discount_type": "",
-				"discount_percent": "",
-				"discount_amount": "",
-				"unit_price": "4.09",
-				"total_price": "4.09",
-				"rate": "0.00",
-				"total_tax": 0
-			},
-			{
-				"item_code": { "type": "INTERNO", "value": "2570" },
-				"item_type": "product",
-				"gift_product": "no",
-				"description": "Prod 7",
-				"quantity": "1.00",
-				"unit": "N.",
-				"discount_type": "",
-				"discount_percent": "",
-				"discount_amount": "",
-				"unit_price": "4.92",
-				"total_price": "4.92",
-				"rate": "0.00",
-				"total_tax": 0
-			},
-			{
-				"item_code": { "type": "INTERNO", "value": "2569" },
-				"item_type": "product",
-				"gift_product": "no",
-				"description": "Prod 6",
-				"quantity": "1.00",
-				"unit": "N.",
-				"discount_type": "",
-				"discount_percent": "",
-				"discount_amount": "",
-				"unit_price": "7.37",
-				"total_price": "7.37",
-				"rate": "0.00",
-				"total_tax": 0
-			}
-		],
-		"payment_data": {
-			"terms_payment": "TP02",
-			"payment_amount": "16.38",
-			"payment_details": "MP02",
-			"beneficiary": "",
-			"financial_institution": "",
-			"iban": ""
-		},
-		"overrides": {
-			"bollo_force_apply": false
-		}
-	},
-	"integration": {
-		"use": "sdi-via-pop",
-		"action": "create"
-	}
+  "license_key": "your_license_key",
+  "data": {
+    "id": 2575,
+    "filename": "IT99900088876_00009",
+    "type": "invoice",
+    "version": "FPR12",
+    "sdi_type": "",
+    "customer_type": "private",
+    "nature": "",
+    "ref_normative": null,
+    "vies": false,
+    "transmitter_data": {
+      "transmitter_id": { "country_id": "IT", "id_code": "IT99900088876" },
+      "progressive": "5b27a73cab",
+      "transmitter_format": "FPR12",
+      "sdi_code": "0000000",
+      "transmitter_contact": { "phone": "", "email": "" },
+      "recipient_pec": ""
+    },
+    "transfer_lender": {
+      "personal_data": {
+        "tax_id_vat": { "country_id": "IT", "id_code": "IT99900088876", "tax_regime": "RF01" },
+        "company_name": "TEST123"
+      },
+      "place": { "address": "Via Roma, 123", "zip_code": "95100", "city": "Catania", "province_id": "CT", "country_id": "IT" },
+      "contact": { "phone": "", "email": "" }
+    },
+    "transferee_client": {
+      "personal_data": {
+        "tax_id_vat": { "country_id": "IT", "id_code": "" },
+        "tax_id_code": "PCCLFA75L04A494S",
+        "company_name": "",
+        "first_name": "Alfio",
+        "last_name": "Piccione"
+      },
+      "place": { "address": "Via Roma 123", "zip_code": "95100", "city": "Catania", "province_id": "CT", "country_id": "IT" }
+    },
+    "invoice_body": {
+      "general_data": {
+        "doc_type": "TD01",
+        "currency": "EUR",
+        "date": "2025-01-31",
+        "invoice_number": "WEB9/2025",
+        "invoice_prefix": "WEB",
+        "invoice_suffix": "2025"
+      },
+      "total_document_amount": "16.38"
+    },
+    "purchase_order_data": { "id": "#2575", "date": "2025-01-31" },
+    "connected_invoice_data": [],
+    "order_items": [
+      {
+        "item_code": { "type": "INTERNO", "value": "2563" },
+        "item_type": "product",
+        "gift_product": "no",
+        "description": "Product A",
+        "quantity": "1.00",
+        "unit": "N.",
+        "discount_type": "",
+        "discount_percent": "",
+        "discount_amount": "",
+        "unit_price": "4.09",
+        "total_price": "4.09",
+        "rate": "0.00",
+        "total_tax": 0
+      }
+    ],
+    "payment_data": {
+      "terms_payment": "TP02",
+      "payment_amount": "16.38",
+      "payment_details": "MP02",
+      "beneficiary": "",
+      "financial_institution": "",
+      "iban": ""
+    }
+  },
+  "integration": {
+    "use": "sdi-via-pop",
+    "action": "create"
+  }
 }
 ```
 
@@ -273,139 +361,113 @@ All four operations support the same four input modes:
 
 ```json
 {
-	"license_key": "your_license_key",
-	"plugin_version": "6.5.2",
-	"site_title": "POP dev",
-	"site_url": "http://site.com",
-	"user_agent_version": "6.8.3",
-	"user_agent": "wordpress",
-	"data": {
-		"id": 2855,
-		"parent_id": null,
-		"order_provider": "woocommerce",
-		"xml_style": "",
-		"view": false,
-		"save": false,
-		"save_bulk": false,
-		"filename": "BE0123456789_0000T",
-		"type": "invoice",
-		"version": "FPR12",
-		"sdi_type": "",
-		"customer_type": "company",
-		"nature": "",
-		"ref_normative": null,
-		"vies": false,
-		"vat_kind": null,
-		"transmitter_data": {
-			"transmitter_id": {
-				"country_id": "BE",
-				"id_code": "BE0123456789"
-			},
-			"progressive": "cea0d365b4",
-			"transmitter_format": "FPR12",
-			"sdi_code": "0000000",
-			"transmitter_contact": {
-				"phone": "",
-				"email": "alfio@email.com"
-			},
-			"recipient_pec": ""
-		},
-		"transfer_lender": {
-			"personal_data": {
-				"tax_id_vat": {
-					"country_id": "BE",
-					"id_code": "BE0123456789",
-					"tax_regime": ""
-				},
-				"company_name": "AP test srl"
-			},
-			"place": {
-				"address": "Via Roma, 123",
-				"zip_code": "95100",
-				"city": "Catania",
-				"province_id": "CT",
-				"country_id": "IT"
-			},
-			"rea_registration": {
-				"office": "",
-				"number": "",
-				"liquidation_status": ""
-			},
-			"contact": {
-				"phone": "",
-				"email": "alfio@email.com"
-			}
-		},
-		"transferee_client": {
-			"personal_data": {
-				"tax_id_vat": {
-					"country_id": "BE",
-					"id_code": "BE0727506532"
-				},
-				"tax_id_code": "",
-				"company_name": "Boltchi Perio Implant Concepts",
-				"first_name": "Alfio BE",
-				"last_name": "Piccione",
-				"email": "alfio.piccione@gmail.com"
-			},
-			"place": {
-				"address": "Via test 1212312",
-				"zip_code": "4444",
-				"city": "Belgio",
-				"province_id": "",
-				"country_id": "BE"
-			}
-		},
-		"invoice_body": {
-			"general_data": {
-				"doc_type": "TD01",
-				"currency": "EUR",
-				"date": "2025-10-03",
-				"invoice_number": "WEB097/2025",
-				"invoice_prefix": "WEB",
-				"invoice_suffix": "2025"
-			},
-			"provident_fund": [],
-			"total_document_amount": "4.80"
-		},
-		"purchase_order_data": {
-			"id": "#2855",
-			"date": "2025-10-03"
-		},
-		"connected_invoice_data": [],
-		"order_items": [
-			{
-				"item_code": { "type": "INTERNO", "value": "2636" },
-				"item_type": "product",
-				"gift_product": null,
-				"description": "AAAA",
-				"quantity": "1.00",
-				"unit": "N.",
-				"discount_type": "",
-				"discount_percent": "",
-				"discount_amount": "",
-				"unit_price": "4.80",
-				"total_price": "4.80",
-				"rate": "0.00",
-				"total_tax": 0
-			}
-		],
-		"payment_data": {
-			"terms_payment": "TP02",
-			"payment_amount": "4.80",
-			"payment_details": "MP01",
-			"beneficiary": "",
-			"financial_institution": "",
-			"iban": ""
-		},
-		"overrides": {
-			"bollo_force_apply": false
-		}
-	},
-	"integration": {
-		"use": "peppol-via-pop",
-		"action": "create"
-	}
+  "license_key": "your_license_key",
+  "data": {
+    "id": 2855,
+    "xml_style": "",
+    "view": false,
+    "save": false,
+    "save_bulk": false,
+    "filename": "BE0123456789_0000T",
+    "type": "invoice",
+    "version": "FPR12",
+    "sdi_type": "",
+    "customer_type": "company",
+    "nature": "",
+    "ref_normative": null,
+    "vies": false,
+    "transmitter_data": {
+      "transmitter_id": { "country_id": "BE", "id_code": "BE0123456789" },
+      "progressive": "cea0d365b4",
+      "transmitter_format": "FPR12",
+      "sdi_code": "0000000",
+      "transmitter_contact": { "phone": "", "email": "info@company.com" },
+      "recipient_pec": ""
+    },
+    "transfer_lender": {
+      "personal_data": {
+        "tax_id_vat": { "country_id": "BE", "id_code": "BE0123456789", "tax_regime": "" },
+        "company_name": "My Company SRL"
+      },
+      "place": { "address": "Via Roma, 123", "zip_code": "1000", "city": "Brussels", "province_id": "", "country_id": "BE" },
+      "contact": { "phone": "", "email": "info@company.com" }
+    },
+    "transferee_client": {
+      "personal_data": {
+        "tax_id_vat": { "country_id": "BE", "id_code": "BE0727506532" },
+        "tax_id_code": "",
+        "company_name": "Client Company NV",
+        "first_name": "",
+        "last_name": ""
+      },
+      "place": { "address": "Rue du Test 12", "zip_code": "4444", "city": "Liege", "province_id": "", "country_id": "BE" }
+    },
+    "invoice_body": {
+      "general_data": {
+        "doc_type": "TD01",
+        "currency": "EUR",
+        "date": "2025-10-03",
+        "invoice_number": "WEB097/2025",
+        "invoice_prefix": "WEB",
+        "invoice_suffix": "2025"
+      },
+      "total_document_amount": "4.80"
+    },
+    "purchase_order_data": { "id": "#2855", "date": "2025-10-03" },
+    "connected_invoice_data": [],
+    "order_items": [
+      {
+        "item_code": { "type": "INTERNO", "value": "2636" },
+        "item_type": "product",
+        "gift_product": null,
+        "description": "Product B",
+        "quantity": "1.00",
+        "unit": "N.",
+        "discount_type": "",
+        "discount_percent": "",
+        "discount_amount": "",
+        "unit_price": "4.80",
+        "total_price": "4.80",
+        "rate": "0.00",
+        "total_tax": 0
+      }
+    ],
+    "payment_data": {
+      "terms_payment": "TP02",
+      "payment_amount": "4.80",
+      "payment_details": "MP01",
+      "beneficiary": "",
+      "financial_institution": "",
+      "iban": ""
+    }
+  },
+  "integration": {
+    "use": "peppol-via-pop",
+    "action": "create"
+  }
+}
+```
+
+### Get Invoice Status — `POST /document-notifications`
+
+```json
+{
+  "license_key": "your_license_key",
+  "integration": {
+    "uuid": "your-integration-uuid"
+  }
+}
+```
+
+### Get Peppol Document — `POST /peppol/document-get`
+
+```json
+{
+  "license_key": "your_license_key",
+  "integration": {
+    "uuid": "your-integration-uuid",
+    "zone": "BE"
+  }
 }
 ```
 
@@ -415,8 +477,6 @@ All four operations support the same four input modes:
 
 ```
 n8n-nodes-pop/
-├── credentials/
-│   └── PopApi.credentials.ts       # Unused — kept for reference only
 ├── nodes/Pop/
 │   ├── Pop.node.ts                  # Node definition and metadata
 │   ├── Pop.node.json                # Codex metadata (categories, aliases, docs links)
@@ -427,7 +487,7 @@ n8n-nodes-pop/
 │   └── invoices/
 │       ├── index.ts                 # Operation aggregator for the invoices resource
 │       ├── invoiceFields.ts         # Form field factory (shared by SdI and Peppol)
-│       ├── invoicePayloadBuilder.ts # Assembles deeply nested API payloads from form values
+│       ├── invoicePayloadBuilder.ts # Assembles API payloads from form values
 │       ├── createSdiInvoiceXml.ts   # Operation: Create SdI Invoice
 │       ├── createPeppolInvoiceUbl.ts# Operation: Create Peppol Invoice
 │       ├── getInvoiceStatus.ts      # Operation: Get Invoice Status
@@ -439,27 +499,30 @@ n8n-nodes-pop/
 
 ---
 
-## Testing Locally
+## Local Development
 
 ### Prerequisites
 
 - **Node.js v22+** (use `.nvmrc`: `nvm use`)
 - **npm**
 
----
-
 ### Steps
 
 ```bash
 npm install       # Install dependencies
-npm run build     # Compile TypeScript → dist/ (initial build)
+npm run build     # Compile TypeScript → dist/
 npm run lint      # Check for linting issues
-npm run dev       # Start watch + n8n
+npm run lint:fix  # Auto-fix linting issues where possible
+npm run dev       # Start watch mode + n8n
 ```
 
-Open [http://localhost:5678](http://localhost:5678), search for **POP** in the node panel, and start testing. Code changes are picked up automatically — no restart needed.
+`npm run dev` (via `@n8n/node-cli`):
+- Symlinks the package into `~/.n8n-node-cli/.n8n/custom/node_modules/`
+- Starts `tsc --watch`, which recompiles on every file save
+- Downloads and starts `n8n@latest` via `npx` (first run may take a while)
+- Sets `N8N_DEV_RELOAD=true` so n8n picks up changes automatically
 
----
+Open [http://localhost:5678](http://localhost:5678), search for **POP** in the node panel, and start testing. Code changes are picked up automatically — no restart needed.
 
 ### Verifying the node works
 
@@ -467,25 +530,16 @@ Open [http://localhost:5678](http://localhost:5678), search for **POP** in the n
 2. Add a **Manual Trigger** node
 3. Add the **POP** node and connect it to the trigger
 4. Select **Invoice** as the resource and an operation (e.g. **Create SdI Invoice (XML)**)
-5. Set **Input Mode** to **JSON** and paste one of the example payloads from the [Example Payloads](#example-payloads) section above
+5. Set **Input Mode** to **JSON** and paste one of the [example payloads](#example-payloads) above
 6. Click **Execute node** — you should see a successful API response or a descriptive error with the full URL, HTTP status, and response body
 
 ---
 
-### Linting
+## Publishing
 
 ```bash
-npm run lint        # Check for issues
-npm run lint:fix    # Auto-fix where possible
-```
-
----
-
-### Publishing to npm
-
-```bash
-npm login           # Log in to your npm account
-npm run release     # Builds, versions, and publishes via @n8n/node-cli
+npm login        # Log in to your npm account
+npm run release  # Builds, versions, and publishes via @n8n/node-cli
 ```
 
 > From **May 1st, 2026**, all community nodes must be published via a GitHub Action that includes a provenance statement. See the [n8n community node publishing guide](https://docs.n8n.io/integrations/community-nodes/build-community-nodes/) for details.
