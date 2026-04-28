@@ -8,7 +8,7 @@
 
 **POP** is an e-invoicing platform that automates the generation, delivery, and management of legally compliant electronic invoices. It supports both the **Italian SdI** (Sistema di Interscambio / FatturaPA) and the **European Peppol** network.
 
-This node lets you create, send, and track electronic invoices directly from n8n workflows — no code required, and **no credentials to configure**.
+This node lets you create, send, and track electronic invoices directly from n8n workflows. Authenticate once with a **POP API credential** (sent as the `X-API-Key` header) or supply the license key per operation — both are supported.
 
 ---
 
@@ -16,6 +16,7 @@ This node lets you create, send, and track electronic invoices directly from n8n
 
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Authentication](#authentication)
 - [Operations](#operations)
 - [Input Modes](#input-modes)
 - [Form Fields Reference](#form-fields-reference)
@@ -37,25 +38,46 @@ Follow the [n8n community nodes installation guide](https://docs.n8n.io/integrat
 
 1. In n8n, go to **Settings > Community Nodes**
 2. Select **Install**
-3. Enter `@babinimazzari/n8n-nodes-pop`
+3. Enter `@getpopapi/n8n-nodes-pop`
 4. Click **Install**
 
 ---
 
-## Configuration
+## Authentication
 
-This node does **not** require any credentials. Instead, each operation exposes an **Environment** selector at the top of its settings.
+The POP Cloud API (v2) accepts the license key in **two** forms:
 
-| Field           | Options                           | Description                              |
-|-----------------|-----------------------------------|------------------------------------------|
-| **Environment** | `Staging` (default), `Production` | Selects the POP API environment to use   |
+| Method                       | How                                                  | Status                  |
+|------------------------------|------------------------------------------------------|-------------------------|
+| **`X-API-Key` HTTP header**  | `X-API-Key: <your_license_key>`                      | **Preferred**           |
+| **`license_key` body param** | `{ "license_key": "<your_license_key>", ... }`       | Legacy fallback         |
 
-| Environment   | Base URL                                        |
-|---------------|-------------------------------------------------|
-| **Staging**   | `https://staging7.popapi.io/wp-json/api/v2/`    |
-| **Production**| `https://popapi.io/wp-json/api/v2/`             |
+When both are present, the header wins. The body fallback exists so older POP API deployments continue to work without changes.
 
-> The **license key** is sent inside each request payload (via the Form Fields input mode), not in a shared credential. This lets you use different license keys per operation or workflow.
+### How to provide the key in n8n
+
+This node supports two ways of supplying the key, which can be combined:
+
+1. **POP API credential** _(recommended)_ — In n8n, go to **Credentials → New → POP API**, paste the license key, and select that credential on the POP node. The node will send `X-API-Key: <your_license_key>` on every request automatically.
+2. **Per-operation License Key field** — In **Form Fields** input mode, every invoice operation exposes a **License Key** field. When non-empty it overrides the credential and is sent both as the `X-API-Key` header **and** as `license_key` in the request body. Useful when one workflow needs to drive multiple licenses.
+
+For **Use Incoming JSON**, **JSON**, and **Raw** input modes the credential is the simplest option — the header is injected automatically. You can still embed `license_key` in the body if you prefer; the API accepts both.
+
+### What the node sends
+
+| Mode                  | `X-API-Key` header                            | `license_key` in body                              |
+|-----------------------|-----------------------------------------------|----------------------------------------------------|
+| Form (key field set)  | The form field value (overrides credential)   | The form field value                               |
+| Form (key field empty)| Credential value (if any)                     | Empty (`""`) — relies on header auth               |
+| Use Incoming JSON     | Credential value (if any)                     | Whatever the upstream item provides                |
+| JSON                  | Credential value (if any)                     | Whatever you put in the JSON body                  |
+| Raw                   | Credential value (if any)                     | n/a (raw payload)                                  |
+
+The **Verify SdI Document (XML)** operation auto-detects the license key from the upstream Create SdI Invoice node — that detected key is sent both as the header and in the body, taking precedence over the credential.
+
+### Self-hosted POP API deployments
+
+If you operate your own POP Cloud API deployment, make sure it includes the auth-header support — see `LicenseHelper::buildLicenseInfo` and `Utils::apiPermissionCallback` in pop-cloud-api, which prefer `X-API-Key` and fall back to `license_key`. Older deployments without that change still work because this node also sends `license_key` in the body whenever it has a key to send.
 
 ---
 
@@ -147,7 +169,7 @@ The **Form Fields** input mode for `Create SdI Invoice (XML)` and `Create Peppol
 
 | Field                     | SDI | Peppol | Description                                              |
 |---------------------------|:---:|:------:|----------------------------------------------------------|
-| License Key `*`           | ✓   | ✓      | POP license key sent in the request payload              |
+| License Key               | ✓   | ✓      | POP license key. Optional when a POP API credential is configured. When set, sent both as `X-API-Key` header and `license_key` body param. |
 | Invoice / Order ID `*`    | ✓   | ✓      | Numeric ID of the invoice or order                       |
 | Filename `*`              | ✓   | ✓      | FatturaPA / Peppol filename (e.g. `IT99900088876_00009`) |
 | Customer Type `*`         | ✓   | ✓      | `Private` / `Company` / `Freelance` (Peppol: no Private) |

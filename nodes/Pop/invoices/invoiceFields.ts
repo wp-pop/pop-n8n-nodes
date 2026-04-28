@@ -50,10 +50,10 @@ export function makeInvoiceFormFields(operation: InvoiceOperation): INodePropert
 			name: 'licenseKey',
 			type: 'string',
 			typeOptions: { password: true },
-			required: true,
 			default: '',
 			displayOptions: showForm,
-			description: 'POP license key included in the request payload',
+			description:
+				'POP license key. Sent as the X-API-Key header and as license_key in the body for backwards compatibility. Leave empty to use the configured POP API credential.',
 		},
 		{
 			displayName: 'Invoice / Order ID',

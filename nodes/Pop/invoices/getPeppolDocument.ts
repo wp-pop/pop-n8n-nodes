@@ -83,13 +83,13 @@ export const properties: InvoicesProperties = [
 		displayName: 'License Key',
 		name: 'licenseKey',
 		type: 'string',
-		required: true,
 		default: '',
 		typeOptions: { password: true },
 		displayOptions: {
 			show: { resource: ['invoices'], operation: [OPERATION], inputMode: ['form'] },
 		},
-		description: 'POP license key to include in the request body',
+		description:
+			'POP license key. Sent as the X-API-Key header and as license_key in the body for backwards compatibility. Leave empty to use the configured POP API credential.',
 	},
 	// Zone field — required for Peppol access points in certain countries (e.g. Belgium)
 	{
@@ -178,6 +178,13 @@ export async function handler(
 	} else if (inputMode === 'form') {
 		// Normalize zone to uppercase; only include if non-empty
 		const zoneValue = (params.zone ?? '').trim().toUpperCase();
+
+		// Per-operation licenseKey, when present, overrides the credential and is
+		// sent both as X-API-Key (preferred) and as license_key in the body.
+		const formKey = (params.licenseKey ?? '').trim();
+		if (formKey) {
+			requestOptions.headers = { ...(requestOptions.headers ?? {}), 'X-API-Key': formKey };
+		}
 
 		requestOptions.json = true;
 		requestOptions.body = {

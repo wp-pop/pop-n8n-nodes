@@ -174,8 +174,14 @@ export async function handler(
 		}
 		requestOptions.body = body;
 	} else if (inputMode === 'form') {
-		// Build the structured payload from form field values using the Peppol variant
+		// Build the structured payload from form field values using the Peppol variant.
+		// When a per-operation licenseKey is provided it overrides the credential
+		// and is sent both as X-API-Key (preferred) and as license_key in the body.
 		requestOptions.json = true;
+		const formKey = (params.licenseKey ?? '').trim();
+		if (formKey) {
+			requestOptions.headers = { ...(requestOptions.headers ?? {}), 'X-API-Key': formKey };
+		}
 		requestOptions.body = buildInvoicePayload(params as InvoiceFormParams, 'peppol', sendInvoice);
 	} else if (inputMode === 'json') {
 		// Use the manually provided JSON body

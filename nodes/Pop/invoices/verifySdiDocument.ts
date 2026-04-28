@@ -155,11 +155,19 @@ export async function handler(
 		base64Xml = Buffer.from(typeof rawXml === 'string' ? rawXml : '', 'utf-8').toString('base64');
 	}
 
+	// When the license key was detected from the upstream node, send it as
+	// X-API-Key (overriding the credential) so the verify call uses the same
+	// key that produced the XML. license_key in the body is retained for
+	// backwards compatibility with POP API deployments lacking auth-header support.
+	const detectedHeaders = licenseKey
+		? { ...(headers ?? {}), 'X-API-Key': licenseKey }
+		: { ...(headers ?? {}) };
+
 	const requestOptions: PopRequestOptions = {
 		url: path,
 		method: 'POST',
 		json: true,
-		headers: { ...(headers ?? {}) },
+		headers: detectedHeaders,
 		body: {
 			license_key: licenseKey,
 			skip_business_check: true,

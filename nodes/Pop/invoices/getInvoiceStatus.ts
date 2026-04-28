@@ -82,13 +82,13 @@ export const properties: InvoicesProperties = [
 		displayName: 'License Key',
 		name: 'licenseKey',
 		type: 'string',
-		required: true,
 		default: '',
 		typeOptions: { password: true },
 		displayOptions: {
 			show: { resource: ['invoices'], operation: [OPERATION], inputMode: ['form'] },
 		},
-		description: 'POP license key to include in the request body',
+		description:
+			'POP license key. Sent as the X-API-Key header and as license_key in the body for backwards compatibility. Leave empty to use the configured POP API credential.',
 	},
 	// ── JSON body (visible when inputMode = json) ──
 	{
@@ -161,8 +161,14 @@ export async function handler(
 		const itemIndex = params._itemIndex ?? 0;
 		requestOptions.body = this.getInputData()[itemIndex].json;
 	} else if (inputMode === 'form') {
-		// Build the simple status query payload
+		// Build the simple status query payload.
+		// Per-operation licenseKey, when present, overrides the credential and is
+		// sent both as X-API-Key (preferred) and as license_key in the body.
 		requestOptions.json = true;
+		const formKey = (params.licenseKey ?? '').trim();
+		if (formKey) {
+			requestOptions.headers = { ...(requestOptions.headers ?? {}), 'X-API-Key': formKey };
+		}
 		requestOptions.body = {
 			license_key: params.licenseKey,
 			integration: { uuid: params.integrationUuid },

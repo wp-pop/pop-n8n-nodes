@@ -34,6 +34,9 @@ fs.mkdirSync(nodeModulesFolder, { recursive: true });
 
 const symlinkPath = path.join(nodeModulesFolder, packageName);
 try {
+  // Ensure the symlink's parent directory exists. Required for scoped
+  // packages (e.g. @getpopapi/...) where the scope folder is created lazily.
+  fs.mkdirSync(path.dirname(symlinkPath), { recursive: true });
   if (fs.existsSync(symlinkPath)) fs.rmSync(symlinkPath, { recursive: true });
   fs.symlinkSync(process.cwd(), symlinkPath);
 } catch (e) {

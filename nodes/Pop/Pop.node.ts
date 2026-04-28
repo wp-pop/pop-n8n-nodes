@@ -40,6 +40,15 @@ export class Pop implements INodeType {
 		// Single main input and output — standard for action nodes
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		// Optional: when configured, the credential's license key is sent as
+		// the X-API-Key header on every request. Per-operation licenseKey
+		// fields (form mode) override the credential when set.
+		credentials: [
+			{
+				name: 'popApi',
+				required: false,
+			},
+		],
 		// Allow this node to be used as an AI tool in n8n Agent workflows
 		usableAsTool: true,
 		// Merge all resource/operation properties from each resource module
